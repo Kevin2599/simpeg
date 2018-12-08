@@ -3,7 +3,7 @@ import numpy as np
 import time as tm
 import re
 import warnings
-
+from SimPEG import Utils
 
 def read_GOCAD_ts(tsfile):
     """
@@ -389,7 +389,7 @@ def writeUBCgravityObservations(filename, survey, d):
     wd = survey.std
 
     data = np.c_[rxLoc, d, wd]
-    head = ('%i\n' % len(d))
+    head = ('%i' % len(d))
     np.savetxt(
         filename, data, fmt='%e', delimiter=' ',
         newline='\n', header=head, comments=''
@@ -417,4 +417,33 @@ def writeVectorUBC(mesh, fileName, model):
         # Flip z to positive down
         modelMatTR[:, ii] = Utils.mkvc(modelMatT[::-1, :, :])
 
+    # Flip Z for UBC file format
+    modelMatTR[:, 2] *= -1
+
     np.savetxt(fileName, modelMatTR)
+
+
+def readVectorUBC(mesh, fileName):
+    """
+        Read a vector model associated with a SimPEG TensorMesh
+        to a UBC-GIF format model file.
+
+        :param string fileName: File to write to
+        :param numpy.ndarray model: The model
+    """
+
+    # f = open(fileName, 'r')
+    model = np.loadtxt(fileName)
+    # f.close()
+
+    vModel = np.zeros((mesh.nC, 3))
+    for ii in range(3):
+        comp = np.reshape(model[:, ii], (mesh.nCz, mesh.nCx, mesh.nCy), order='F')
+        comp = comp[::-1, :, :]
+        comp = np.transpose(comp, (1, 2, 0))
+        vModel[:, ii] = Utils.mkvc(comp)
+
+    # Flip the z vector
+    vModel[:, 2] *= -1
+    return vModel
+
